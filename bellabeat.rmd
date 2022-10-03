@@ -1,0 +1,396 @@
+---
+title: "Bellabeat"
+author: "Lucky Gbelode"
+date: "2022-09-29"
+output:
+    rmarkdown::html_document:
+    theme: cayman
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+### TABLE OF CONTENTS
+
+1.0 INTRODUCTION   
+1.1 LOADING THE REQUIRED LIBRARIES   
+1.2 LOADING THE DATASETS   
+1.3 DATASETS BASIC STATISTICS   
+
+2.0 DATA WRANGLING   
+2.1 CLEANING THE SLEEP TABLE     
+2.2 CLEANING THE DAILY TABLE      
+
+3.0 ANALYSIS    
+3.1 DAILY STATISTICS OF USERS   
+3.2 SLEEP STATISTICS OF USERS   
+3.3 USERS SLEEP PATTERN   
+3.4 USERS ACTIVE AND SEDENTARY MINUTES  
+3.5 USERS STEPS   
+3.6 USERS DAILY STATISTICS TRENDS   
+3.7 USERS STATISTICS ON DIFFERENT DAYS   
+3.8 USERS METRICS ON WEEKENDS AND WEEK DAYS   
+3.9 USERS PERFORMANCE   
+
+4.0 CONCLUSION    
+
+
+
+### 1.0 INTRODUCTION
+
+ Bellalbeat is a high-tech company that manufactures smart health products.They manufacture smart devices that monitor users daily activities, steps, calories and sleep .The data used in this analysis are from FitBit users personal fitness tracker available on Kaggle. This study will conduct an analysis on how consumers uses its smart devices, in order to gain valuable insights that will inform business decisions and marketing strategies.
+
+
+#### 1.1 LOADING THE REQUIRED LIBRARIES
+
+```{r}
+  library(tidyverse)
+  library(lubridate )
+  library(ggplot2)
+  library(DT)
+  library(prettydoc)
+  library(kableExtra)
+```
+
+#### 1.2 LOADING THE DATASETS
+
+```{r}
+  daily <- read_csv("dailyActivity_merged.csv")
+  sleep <- read_csv("sleepDay_merged.csv")
+```
+ 
+ * The dailyActivity_merged and sleepDay_merged tables will be used in this analysis.
+ 
+#### 1.3 DATASETS DESCRIPTIVE STATISTICS
+```{r}
+  str(daily)
+  colnames(daily)
+  dim(daily)
+  str(sleep)
+  colnames(sleep)
+  dim(sleep)
+```
+
+
+### 2.0 DATA WRANGLING
+#### 2.1 CLEANING THE SLEEP TABLE
+
+```{r}
+  sleep <- sleep %>%
+    mutate(Date = as.Date(SleepDay , "%m/%d/%y") )%>%
+    select(-SleepDay)
+```
+
+ *The SleepDay column is converted to Date datatype and renamed.
+ 
+#### 2.2 CLEANING THE DAILY TABLE 
+
+```{r}
+  daily <- daily %>%
+    mutate(Date = as.Date(ActivityDate , "%m/%d/%y"))%>%
+    select(- ActivityDate)
+```
+
+ *The ActivityDate column is converted to Date datatype and renamed.
+ 
+### 3.0 ANALYSIS
+##### 3.1 DAILY STATISTICS OF USERS 
+
+```{r }
+
+ Id_stats_daily <- daily%>%
+             group_by(Id) %>%
+             summarize(steps = mean(TotalSteps), calorie = mean(Calories), sedentary = mean(SedentaryMinutes), active = mean(VeryActiveMinutes)) 
+
+ stats_daily <- daily %>%
+   summarize( steps = mean(TotalSteps), calorie = mean(Calories),
+             sedentary = mean(SedentaryMinutes), active = mean(VeryActiveMinutes)) 
+ 
+datatable(Id_stats_daily, filter = "bottom")
+ kable(stats_daily)
+ 
+   
+```
+ 
+ *We get the average of  users daily statistics and
+the average for all users.
+ *33 Users data are available
+
+##### 3.2 SLEEP STATISTICS OF USERS 
+```{r}
+
+Id_sleep_stats <- sleep %>%
+   group_by(Id) %>%
+   summarize(sleep = mean(TotalMinutesAsleep), time_in_bed = mean(TotalTimeInBed))
+ 
+ sleep_stats <- sleep %>%
+   summarize(sleep = mean(TotalMinutesAsleep), time_in_bed = mean(TotalTimeInBed))
+ datatable(Id_sleep_stats, filter = "bottom")
+ kable(sleep_stats,  caption =  "Sleep Statistics (Averages)")
+ 
+```
+
+ *We get the average of  users sleep statistics and
+the average for all users.
+ *24 Users data are available.
+
+#### 3.3 USERS SLEEP PATTERN
+ Analysis on whether users are getting enough sleep,
+using an average of 7 hours or 420 minutes benchmark for a good night sleep.
+
+```{r}
+ less_sleep <- Id_sleep_stats %>%
+                 filter( sleep < 420)
+
+ less_time_in_bed <- less_sleep %>%
+                 filter(time_in_bed < 420)
+
+ sleep_categorized <- Id_sleep_stats %>%
+   mutate( sleep_categorize = ifelse(sleep > 420, "Enough", "Not_enough"))
+
+ sleep_pattern <- sleep_categorized %>%
+         group_by(sleep_categorize) %>%
+         summarise( count = n())
+ 
+  ggplot(data = sleep_pattern, aes(x = sleep_categorize, y = count))+
+ geom_bar( stat = "identity",fill = "orange", color = "black") +
+ ggtitle("Users sleep pattern")
+ 
+```
+ 
+ * Half of the Users are not getting enough sleep.
+
+ Analysis on time spent in bed by users 
+ 
+```{r}
+  ggplot(data = sleep_categorized, aes(x = sleep, y = time_in_bed, color = sleep_categorize ))+
+ geom_point( ) +
+ ggtitle("Users sleep and time in bed pattern")
+```
+
+*increased time in bed leads to enough sleep
+
+#### 3.4 USERS ACTIVE AND SEDENTARY MINUTES
+ *Analysis on  users active and sedentary minutes. 
+ *Users with more sedentary minutes than the average.
+ 
+```{r}
+  more_sedentary <- Id_stats_daily %>%
+    filter( sedentary > active)
+
+  sedentary_categorized <- Id_stats_daily %>%
+    mutate( sedentary_categorize = ifelse(sedentary > 991, "More", "Less"))
+ 
+  sedentary_pattern <- sedentary_categorized %>%
+    group_by(sedentary_categorize) %>%
+    summarise( count = n())
+
+    ggplot(data = sedentary_pattern, aes(x = sedentary_categorize, y = count)) +
+    geom_bar( stat = "identity",fill = "orange", color = "black")+
+    ggtitle("Users sedentary pattern")
+  
+```
+ 
+ *More Users are having higher sedentary minutes than the average
+
+#### 3.5 USERS STEPS
+ Analysis to comparing the users steps and get details for users with more sedentary minutes than the average
+```{r}
+  steps_categorized <- Id_stats_daily %>%
+    mutate( steps_categorize = ifelse(steps > 7637, "Above", "Less"))
+  
+  steps_pattern <- steps_categorized %>%
+    group_by(steps_categorize) %>%
+    summarise( count = n())
+  
+ ggplot(data = steps_pattern, aes(x = steps_categorize, y = count)) +
+ geom_bar( stat = "identity",fill = "orange", color = "black") +
+    ggtitle("Users steps pattern")
+  
+```
+
+*18 (54%) users have less steps than the average
+
+#### 3.6 USERS DAILY STATISTICS TRENDS 
+ Analysis on the trends for different users  metrics: calories, steps, sedentary minutes and active minutes
+```{r}
+  # Trend
+  Id_stats_date <- daily%>%
+    group_by(Date) %>%
+    summarize(steps = mean(TotalSteps), calorie = mean(Calories),
+              sedentary = mean(SedentaryMinutes), active = mean(VeryActiveMinutes))
+
+  ggplot(data = Id_stats_date,aes(x = Date, y = calorie)) +
+    geom_point() +
+    ggtitle("Calorie Trend")
+
+  ggplot(data = Id_stats_date,aes(x = Date, y = steps)) +
+    geom_point() +
+    ggtitle("Steps Trend")
+
+  ggplot(data = Id_stats_date,aes(x = Date, y = sedentary)) +
+    geom_point() +
+    ggtitle("Sedentary Minutes Trend")
+  
+    ggplot(data = Id_stats_date,aes(x = Date, y = active)) +
+    geom_point() +
+    ggtitle("Active Minutes Trend")
+```
+
+Users sleep and time in bed trend
+```{r }
+  Id_sleep_date <- sleep%>%
+    group_by(Date) %>%
+    summarize(sleep = mean(TotalMinutesAsleep), time_in_bed = mean(TotalTimeInBed))
+  
+  ggplot(data = Id_sleep_date,aes(x = Date, y = sleep)) +
+    geom_point() +
+    ggtitle("sleep Trend")
+
+  ggplot(data = Id_sleep_date,aes(x = Date, y = time_in_bed)) +
+    geom_point() +
+    ggtitle("Time In Bed Trend")
+  
+```
+
+#### 3.7 USERS STATISTICS ON DIFFERENT DAYS 
+ Analysis on users daily metris on weekdays . We  categorize date into week days and analyze users steps, calories, sedentary minutes and active minutes  on different days 
+```{r }
+  weekday_daily <- daily %>%
+               mutate( weekday = wday(Date, label = TRUE)) %>%
+               group_by(weekday) %>%
+               summarize(steps = mean(TotalSteps), calorie = mean(Calories),
+               sedentary = mean(SedentaryMinutes), active = mean(VeryActiveMinutes),)
+  
+  ggplot(data = weekday_daily,aes(x = weekday, y = steps)) +
+    geom_bar( stat = "identity",fill = "orange", color = "black")+
+    ggtitle("Steps On Different Days")
+
+  ggplot(data = weekday_daily,aes(x = weekday, y = calorie)) +
+    geom_bar( stat = "identity",fill = "orange", color = "black")+
+    ggtitle("Calorie On Different Days")
+  
+    ggplot(data = weekday_daily,aes(x = weekday, y = sedentary)) +
+    geom_bar( stat = "identity",fill = "orange", color = "black")+
+    ggtitle("Sedentary Minutes On Different Days")
+  
+  ggplot(data = weekday_daily,aes(x = weekday, y = active)) +
+    geom_bar( stat = "identity",fill = "orange", color = "black")+
+    ggtitle("Active Minutes On Different Days")
+   # more active on weekends
+  
+  weekday_sleep <- sleep %>%
+    mutate( weekday = wday(Date, label = TRUE)) %>%
+    group_by(weekday) %>%
+    summarize(sleep = mean(TotalMinutesAsleep), time_in_bed = mean(TotalTimeInBed))
+  
+```
+
+ *Users are more active on weekends than on week days
+
+sleep minutes and time in bed on different days.
+```{r}
+  weekday_sleep <- sleep %>%
+    mutate( weekday = wday(Date, label = TRUE)) %>%
+    group_by(weekday) %>%
+    summarize(sleep = mean(TotalMinutesAsleep), time_in_bed = mean(TotalTimeInBed))
+  
+  ggplot(data = weekday_sleep,aes(x = weekday, y = sleep)) +
+    geom_bar( stat = "identity",fill = "orange", color = "black")+
+    ggtitle("Sleep Minutes On Different Days")
+  # more sleep on weekends
+
+  ggplot(data = weekday_sleep,aes(x = weekday, y = time_in_bed)) +
+    geom_bar( stat = "identity",fill = "orange", color = "black")+
+    ggtitle("Time In Bed Minutes On Different Days")
+
+```
+
+#### 3.8 USERS METRICS ON WEEKENDS AND WEEK DAYS
+ Analysis on users steps, calories, sedentary minutes and active minutes metrics on weekends and week days.
+```{r}
+  week_daily <- daily %>%
+    mutate( day = wday(Date)) %>%
+    mutate( day_categorize = ifelse(day == 6| day == 7, "Weekday", "Weekend")) %>%
+    group_by(day_categorize) %>%
+    summarize(steps = mean(TotalSteps), calorie = mean(Calories),
+              sedentary = mean(SedentaryMinutes), active = mean(VeryActiveMinutes),)
+
+  ggplot(data = week_daily,aes(x = day_categorize, y = steps)) +
+    geom_bar( stat = "identity",fill = "orange", color = "black")+
+    ggtitle("Steps On Weekdays And Weekends")
+  
+  ggplot(data = week_daily,aes(x = day_categorize, y = calorie)) +
+    geom_bar( stat = "identity",fill = "orange", color = "black")+
+    ggtitle("Calories On Weekdays And Weekends")
+  
+  ggplot(data = week_daily,aes(x = day_categorize, y = sedentary))+
+    geom_bar( stat = "identity",fill = "orange", color = "black")+
+    ggtitle("Sedentary  Sinutes On Weekdays And Weekends")
+
+  ggplot(data = week_daily,aes(x = day_categorize, y = active)) +
+    geom_bar( stat = "identity",fill = "orange", color = "black")+
+    ggtitle("Active Minutes On Weekdays And Weekends")
+
+```
+ 
+  * Users ake more steps on weekends than on week days
+
+ We will categorize  users sleep on weekends and week days and time in bed minutes on weekdays and weekend
+```{r}
+  week_sleep <- sleep %>%
+    mutate( day = wday(Date)) %>%
+    mutate( day_categorize = ifelse(day == 6| day == 7, "Weekday", "Weekend")) %>%
+    group_by(day_categorize) %>%
+    summarize(sleep = mean(TotalMinutesAsleep), time_in_bed = mean(TotalTimeInBed))
+  
+  
+  ggplot(data = week_sleep,aes(x = day_categorize, y = sleep)) +
+    geom_bar( stat = "identity",fill = "orange", color = "black")+
+    ggtitle("Sleep Minutes On Weekdays And Weekends")
+  
+  ggplot(data = week_sleep,aes(x = day_categorize, y = time_in_bed)) +
+    geom_bar( stat = "identity",fill = "orange", color = "black")+
+    ggtitle("Time In Bed Minutes On Weekdays And Weekends")
+  
+```
+
+ *Users spend more time in bed and sleep more on weekdays than on weekends.
+
+#### 3.9 USERS PERFORMANCE
+ We categorizing users into top, average and worse performers using the different metrics averages.
+* for active minutes 21 is the average metrice score,
+* for sedentary minutes 991 is the average metrice score,
+* for steps 7637 is the average metrice score,
+```{r}
+
+  top_performers <- Id_stats_daily %>%
+            filter( active > 21 &sedentary < 991 & steps > 7637) 
+
+  worse_performers <- Id_stats_daily %>%
+    filter( active < 21 &sedentary > 991 & steps < 7637) 
+
+  users_categorized <- Id_stats_daily %>%
+    mutate(users_categorize = 
+             ifelse(( active > 21 &sedentary < 991 & steps > 7637), "Top_performers",
+             ifelse(( active < 21 &sedentary > 991 & steps < 7637), "Worse_performers","Average_performers" )))
+  
+  users_categories <- users_categorized %>%
+                       group_by(users_categorize) %>%
+                       summarise( count = n())
+  ggplot(data = users_categories,aes(x = users_categorize, y = count)) +
+  geom_bar( stat = "identity",fill = "orange", color = "black") +
+    ggtitle("Users Category")
+  
+```
+
+* 7 Users can be identified as Top performers
+*14 Users can be identified as Top performers
+ 
+###  4.0 CONCLUSION
+1. 50% of Users are not getting up to 7 hours (420 minutes) of sleep. Bellabeat Time  product can be used to improve it with the  use of  notifications and targets.
+2. 54% of the Users are taking less steps than the average. Bellabeat Tracker product can be used to improve users steps by setting targets for the users.
+3. 42% of Users are performing badly with less steps, active minutes and sleep than the average. Bellabeat lifestyle product can be used to rate users on how they are fairing in different metrics and set target for each of the metrics that users can meet to ensure a healthy lifestyle.
+4. More users are having more sedentary minutes than the average. Bellabeat Tracker product can used to notify users if their sedentary minutes is above the average or a target.
+5. Users are having more active week days than weekends. Bellabeat send notifications to users to remember to take it's hydration product on very active days
