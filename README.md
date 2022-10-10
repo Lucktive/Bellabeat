@@ -9,4 +9,4 @@ TREND ANALYSIS: Different variables are analyzed in the context of time. Importa
 
 BUSINESS ANALYSIS: This Analysis answers different business questions like  top and worse performing Users, Users activities and sleep pattern.
 
-DASHBOARD: A Dashboard to show the most significant patterns, insights and trends to Stakeholders is created. This gives the Stakeholders a bird's eye view of the Analysis most important discoveries.
+CONCLUSION: Important insights, patterns and trends are communicated to Stakeholders in a clear and concise way.
